@@ -182,16 +182,14 @@
         const audio = new Audio(node.audio);
         audio.loop = true;
         audio.volume = 0;
-        audio.load();
-        audio.play().catch(err => console.error(`Failed to start ${node.audio}`, err));
+        audio.load(); // Only preload, don't play yet
         audioElements[node.name] = { audio };
       });
 
       defaultNoise = new Audio("default.mp3");
       defaultNoise.loop = true;
       defaultNoise.volume = 0;
-      defaultNoise.load();
-      defaultNoise.play().catch(err => console.error("Failed to start defaultNoise", err));
+      defaultNoise.load(); // Only preload, don't play yet
 
       document.getElementById("audio-toggle-btn").textContent = "Play";
       audioReady = true;
@@ -204,6 +202,7 @@
         map.invalidateSize();
       }, 500);
     }
+
 
     function getDistance(lat1, lon1, lat2, lon2) {
       const R = 6371e3;
@@ -260,7 +259,9 @@
     }
 
     function fadeIn(audio, targetVolume) {
-      if (audio.paused) audio.play().catch(() => {});
+      if (audio.paused) {
+        audio.play().catch(() => {});
+      }
       let vol = audio.volume;
       const step = 0.05;
       const interval = setInterval(() => {
@@ -272,6 +273,7 @@
         }
       }, 100);
     }
+
 
     function fadeOut(audio) {
       let vol = audio.volume;
@@ -304,14 +306,15 @@
       btn.textContent = isAudioPaused ? "Play" : "Pause";
 
       if (isAudioPaused) {
-        // Fade everything out and pause
         Object.values(audioElements).forEach(obj => fadeOut(obj.audio));
         fadeOut(defaultNoise);
       } else {
-        // Let GPS decide which audio to fade in
+        document.getElementById("status-box").innerHTML = "Locating...";
         navigator.geolocation.getCurrentPosition(updateLocation, handleGeoError);
       }
     }
+
+
 
     function setGlobalVolume(val) {
       if (!audioReady) return;
