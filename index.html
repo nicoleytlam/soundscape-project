@@ -288,13 +288,13 @@
     }
 
     function updateStatusBox(lat, lon, closestNode, minDistance, activeNodes) {
-      document.getElementById("status-box").innerHTML = `
-        <strong>Latitude:</strong> ${lat.toFixed(6)}<br>
-        <strong>Longitude:</strong> ${lon.toFixed(6)}<br>
-        <strong>Closest Node:</strong> ${closestNode ? closestNode.name : 'None'}<br>
-        <strong>Active Tracks:</strong> ${activeNodes.length > 0 ? activeNodes.join(", ") : 'Default Noise'}
-      `;
-    }
+          document.getElementById("status-box").innerHTML = `
+            <strong>Latitude:</strong> ${lat.toFixed(6)}<br>
+            <strong>Longitude:</strong> ${lon.toFixed(6)}<br>
+            <strong>Closest Node:</strong> ${closestNode ? closestNode.name : 'None'}<br>
+            <strong>Active Tracks:</strong> ${activeNodes.length > 0 ? activeNodes.join(", ") : 'Default Noise'}
+          `;
+        }
 
     function toggleGlobalAudio() {
       if (!audioReady) return;
@@ -304,15 +304,12 @@
       btn.textContent = isAudioPaused ? "Play" : "Pause";
 
       if (isAudioPaused) {
-        Object.values(audioElements).forEach(obj => {
-          if (obj.audio.volume > 0) obj.audio.pause();
-        });
-        if (defaultNoise.volume > 0) defaultNoise.pause();
+        // Fade everything out and pause
+        Object.values(audioElements).forEach(obj => fadeOut(obj.audio));
+        fadeOut(defaultNoise);
       } else {
-        Object.values(audioElements).forEach(obj => {
-          if (obj.audio.volume > 0) obj.audio.play().catch(() => {});
-        });
-        if (defaultNoise.volume > 0) defaultNoise.play().catch(() => {});
+        // Let GPS decide which audio to fade in
+        navigator.geolocation.getCurrentPosition(updateLocation, handleGeoError);
       }
     }
 
