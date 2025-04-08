@@ -64,9 +64,23 @@
       gap: 8px;
     }
     #global-audio-controls button {
-      font-size: 1rem;
-      padding: 5px 10px;
+      background: #007bff;
+      color: white;
+      border: none;
+      border-radius: 50%;
+      width: 50px;
+      height: 50px;
+      font-size: 1.4rem;
+      cursor: pointer;
+      box-shadow: 0 0 8px rgba(0, 0, 0, 0.2);
+      transition: background 0.3s ease, transform 0.1s ease;
     }
+
+    #global-audio-controls button:hover {
+      background: #0056b3;
+      transform: scale(1.05);
+    }
+
 
     #global-audio-controls input[type="range"] {
       width: 100px;
@@ -236,7 +250,12 @@
         }
       });
 
-      if (audioReady && !isAudioPaused) adjustAudioVolumes(activeNodes);
+      window.lastActiveNodes = activeNodes;
+
+      if (audioReady && !isAudioPaused) {
+        adjustAudioVolumes(activeNodes);
+      }
+
       updateStatusBox(lat, lon, closestNode, minDistance, activeNodes);
     }
 
@@ -302,24 +321,27 @@
 
       isAudioPaused = !isAudioPaused;
       const btn = document.getElementById("audio-toggle-btn");
-      btn.textContent = isAudioPaused ? "Play" : "Pause";
+      btn.textContent = isAudioPaused ? "🔇" : "▶️";
 
       if (isAudioPaused) {
+        // Smoothly fade everything out
         Object.values(audioElements).forEach(obj => fadeOut(obj.audio));
         fadeOut(defaultNoise);
       } else {
-        document.getElementById("status-box").innerHTML = "Locating...";
-        navigator.geolocation.getCurrentPosition(updateLocation, handleGeoError);
+        // Last known location will decide what to fade in
+        if (window.lastActiveNodes) {
+          adjustAudioVolumes(window.lastActiveNodes);
+        }
       }
     }
 
 
 
-    function setGlobalVolume(val) {
-      if (!audioReady) return;
-      Object.values(audioElements).forEach(obj => obj.audio.volume = val);
-      defaultNoise.volume = val;
-    }
+    // function setGlobalVolume(val) {
+    //   if (!audioReady) return;
+    //   Object.values(audioElements).forEach(obj => obj.audio.volume = val);
+    //   defaultNoise.volume = val;
+    // }
 
     function handleGeoError(error) {
       const box = document.getElementById("status-box");
