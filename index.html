@@ -1,311 +1,221 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>GPS Location with Audio</title>
-  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
-  <style>
-    #map { height: 100vh; width: 100%; }
+<script>
+  const radius = 120;
+  let defaultNoise, isAudioPaused = false, audioReady = false;
+  const audioElements = {};
+  const nodes = [
+    { lat: 41.311387, lon: -72.926065, name: "Woolsey Hall", audio: "woolsey.mp3" },
+    { lat: 41.309662, lon: -72.930934, name: "University Theater", audio: "ut.mp3" },
+    { lat: 41.311568, lon: -72.930431, name: "Off Broadway Theater", audio: "obt.mp3" },
+    { lat: 41.309510, lon: -72.927423, name: "Battell Chapel", audio: "battell.mp3" },
+    { lat: 41.310420, lon: -72.928195, name: "Berkeley College", audio: "berkeley.mp3" }
+  ];
 
-    .custom-marker {
-      background: rgba(0, 123, 255, 0.9);
-      width: 20px;
-      height: 20px;
-      border-radius: 50%;
-      border: 3px solid white;
-      box-shadow: 0 0 10px rgba(0, 123, 255, 0.9);
-      animation: pulse 0.5s infinite alternate;
-    }
+  const map = L.map('map').setView([0, 0], 15);
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+    attribution: '&copy; OpenStreetMap &copy; CartoDB',
+    subdomains: 'abcd',
+    maxZoom: 20
+  }).addTo(map);
 
-    @keyframes pulse {
-      0% { opacity: 1; }
-      100% { opacity: 0.5; }
-    }
+  const userIcon = L.divIcon({ className: 'custom-marker', iconSize: [20, 20] });
+  const userMarker = L.marker([0, 0], { icon: userIcon }).addTo(map);
 
-    #status-box {
-      position: absolute;
-      top: 10px;
-      left: 10px;
-      background: white;
-      padding: 10px;
-      border-radius: 5px;
-      box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
-      z-index: 1000;
-    }
-
-    #global-audio-controls {
-      position: absolute;
-      top: 10px;
-      right: 10px;
-      z-index: 1001;
-      background: white;
-      padding: 10px;
-      border-radius: 8px;
-      box-shadow: 0 0 10px rgba(0,0,0,0.2);
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 8px;
-    }
-
-    #global-audio-controls button {
-      font-size: 1rem;
-      padding: 5px 10px;
-    }
-
-    #global-audio-controls input[type="range"] {
-      width: 100px;
-    }
-
-    /* Audio unlock overlay with fade and spinning note */
-    #audio-unlock-overlay {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(255, 255, 255, 0.95);
-      z-index: 3000;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      flex-direction: column;
-      text-align: center;
-      animation: fadeIn 0.5s ease-in-out;
-      opacity: 1;
-      transition: opacity 0.5s ease-in-out;
-    }
-
-    #audio-unlock-overlay.fade-out {
-      opacity: 0;
-    }
-
-    .note-spinner {
-      font-size: 2.5rem;
-      animation: spin 2s linear infinite;
-      margin-bottom: 1rem;
-    }
-
-    @keyframes fadeIn {
-      from { opacity: 0; }
-      to { opacity: 1; }
-    }
-
-    @keyframes spin {
-      0% { transform: rotate(0deg); }
-      100% { transform: rotate(360deg); }
-    }
-
-    #audio-unlock-overlay button {
-      font-size: 1rem;
-      padding: 10px 20px;
-      border: none;
-      background: #007bff;
-      color: white;
-      border-radius: 5px;
-      cursor: pointer;
-    }
-  </style>
-</head>
-<body>
-  <div id="map"></div>
-  <div id="status-box">Loading...</div>
-
-  <!-- Global Audio Controls -->
-  <div id="global-audio-controls">
-    <button id="audio-toggle-btn" onclick="toggleGlobalAudio()">Pause</button>
-    <label style="font-size: 0.9rem;">
-      Volume
-      <input type="range" min="0" max="1" step="0.01" value="1" onchange="setGlobalVolume(this.value)">
-    </label>
-  </div>
-
-  <!-- Audio Unlock Overlay -->
-  <div id="audio-unlock-overlay">
-    <div class="note-spinner">🎵</div>
-    <p style="margin-bottom: 1rem; font-size: 1.2rem;">Tap to start audio experience</p>
-    <button onclick="unlockAudio()">Start</button>
-  </div>
-
-  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-  <script>
-    const radius = 120;
-    let defaultNoise, isAudioPaused = false, audioReady = false;
-    const audioElements = {};
-    const nodes = [
-      { lat: 41.311387, lon: -72.926065, name: "Woolsey Hall", audio: "woolsey.mp3" },
-      { lat: 41.309662, lon: -72.930934, name: "University Theater", audio: "ut.mp3" },
-      { lat: 41.311568, lon: -72.930431, name: "Off Broadway Theater", audio: "obt.mp3" },
-      { lat: 41.309510, lon: -72.927423, name: "Battell Chapel", audio: "battell.mp3" },
-      { lat: 41.310420, lon: -72.928195, name: "Berkeley College", audio: "berkeley.mp3" }
-    ];
-  
-    const map = L.map('map').setView([0, 0], 15);
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-      attribution: '&copy; OpenStreetMap &copy; CartoDB',
-      subdomains: 'abcd',
-      maxZoom: 20
+  nodes.forEach(node => {
+    L.marker([node.lat, node.lon]).addTo(map).bindPopup(node.name);
+    node.circle = L.circle([node.lat, node.lon], {
+      radius,
+      color: "#007bff",
+      fillColor: "#007bff",
+      fillOpacity: 0.2,
+      weight: 1
     }).addTo(map);
-  
-    const userIcon = L.divIcon({ className: 'custom-marker', iconSize: [20, 20] });
-    const userMarker = L.marker([0, 0], { icon: userIcon }).addTo(map);
-  
+  });
+
+  function unlockAudio() {
     nodes.forEach(node => {
-      L.marker([node.lat, node.lon]).addTo(map).bindPopup(node.name);
-      node.circle = L.circle([node.lat, node.lon], {
-        radius,
-        color: "#007bff",
-        fillColor: "#007bff",
-        fillOpacity: 0.2,
-        weight: 1
-      }).addTo(map);
+      const audio = new Audio(node.audio);
+      audio.loop = true;
+      audio.volume = 0;
+      audio.load();
+      audio.play().catch(err => console.error(`Failed to start ${node.audio}`, err));
+      audioElements[node.name] = { audio };
     });
-  
-    function unlockAudio() {
-      nodes.forEach(node => {
-        const audio = new Audio(node.audio);
-        audio.loop = true;
-        audio.volume = 0;
-        audio.load();
-        audio.play().catch(err => console.error(`Failed to start ${node.audio}`, err));
-        audioElements[node.name] = { audio };
-      });
-  
-      defaultNoise = new Audio("default.mp3");
-      defaultNoise.loop = true;
-      defaultNoise.volume = 0;
-      defaultNoise.load();
-      defaultNoise.play().catch(err => console.error("Failed to start defaultNoise", err));
-  
-      document.getElementById("audio-toggle-btn").textContent = "Play";
-      audioReady = true;
-      isAudioPaused = true;
-  
-      const overlay = document.getElementById("audio-unlock-overlay");
-      overlay.classList.add("fade-out");
-      setTimeout(() => overlay.style.display = "none", 500);
-    }
-  
-    function getDistance(lat1, lon1, lat2, lon2) {
-      const R = 6371e3;
-      const φ1 = lat1 * Math.PI / 180;
-      const φ2 = lat2 * Math.PI / 180;
-      const Δφ = (lat2 - lat1) * Math.PI / 180;
-      const Δλ = (lon2 - lon1) * Math.PI / 180;
-  
-      const a = Math.sin(Δφ / 2) ** 2 +
-                Math.cos(φ1) * Math.cos(φ2) *
-                Math.sin(Δλ / 2) ** 2;
-      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-      return R * c;
-    }
-  
-    function updateLocation(position) {
-      const lat = position.coords.latitude;
-      const lon = position.coords.longitude;
-      userMarker.setLatLng([lat, lon]);
-      map.setView([lat, lon], 15);
-  
-      const activeNodes = [];
-      let closestNode = null;
-      let minDistance = Infinity;
-  
-      nodes.forEach(node => {
-        const distance = getDistance(lat, lon, node.lat, node.lon);
-        if (distance <= radius) activeNodes.push(node.name);
-        if (distance < minDistance) {
-          minDistance = distance;
-          closestNode = node;
-        }
-      });
-  
-      if (audioReady && !isAudioPaused) adjustAudioVolumes(activeNodes);
-      updateStatusBox(lat, lon, closestNode, minDistance, activeNodes);
-    }
-  
-    function adjustAudioVolumes(activeNodes) {
-      const numActive = activeNodes.length;
-      const volumePerTrack = numActive > 0 ? 1 / numActive : 0;
-  
-      activeNodes.forEach(name => {
-        const { audio } = audioElements[name];
-        fadeIn(audio, volumePerTrack);
-      });
-  
-      Object.keys(audioElements).forEach(name => {
-        if (!activeNodes.includes(name)) fadeOut(audioElements[name].audio);
-      });
-  
-      if (numActive === 0) fadeIn(defaultNoise, 1);
-      else fadeOut(defaultNoise);
-    }
-  
-    function fadeIn(audio, targetVolume) {
-      if (audio.paused) audio.play().catch(() => {});
-      let vol = audio.volume;
-      const step = 0.05;
-      const interval = setInterval(() => {
-        if (vol < targetVolume) {
-          vol = Math.min(vol + step, targetVolume);
-          audio.volume = vol;
-        } else {
-          clearInterval(interval);
-        }
-      }, 100);
-    }
-  
-    function fadeOut(audio) {
-      let vol = audio.volume;
-      const step = 0.05;
-      const interval = setInterval(() => {
-        if (vol > 0) {
-          vol = Math.max(vol - step, 0);
-          audio.volume = vol;
-        } else {
-          audio.pause();
-          clearInterval(interval);
-        }
-      }, 100);
-    }
-  
-    function updateStatusBox(lat, lon, closestNode, minDistance, activeNodes) {
-      document.getElementById("status-box").innerHTML = `
-        <strong>Latitude:</strong> ${lat.toFixed(6)}<br>
-        <strong>Longitude:</strong> ${lon.toFixed(6)}<br>
-        <strong>Closest Node:</strong> ${closestNode ? closestNode.name : 'None'}<br>
-        <strong>Active Tracks:</strong> ${activeNodes.length > 0 ? activeNodes.join(", ") : 'Default Noise'}
-      `;
-    }
-  
-    function toggleGlobalAudio() {
-      if (!audioReady) return;
-  
-      isAudioPaused = !isAudioPaused;
-      const btn = document.getElementById("audio-toggle-btn");
-      btn.textContent = isAudioPaused ? "Play" : "Pause";
-  
-      if (isAudioPaused) {
-        Object.values(audioElements).forEach(obj => obj.audio.pause());
-        defaultNoise.pause();
-      } else {
-        Object.values(audioElements).forEach(obj => obj.audio.play().catch(() => {}));
-        defaultNoise.play().catch(() => {});
+
+    defaultNoise = new Audio("default.mp3");
+    defaultNoise.loop = true;
+    defaultNoise.volume = 0;
+    defaultNoise.load();
+    defaultNoise.play().catch(err => console.error("Failed to start defaultNoise", err));
+
+    document.getElementById("audio-toggle-btn").textContent = "Play";
+    audioReady = true;
+    isAudioPaused = true;
+
+    const overlay = document.getElementById("audio-unlock-overlay");
+    overlay.classList.add("fade-out");
+    setTimeout(() => overlay.style.display = "none", 500);
+  }
+
+  function getDistance(lat1, lon1, lat2, lon2) {
+    const R = 6371e3;
+    const φ1 = lat1 * Math.PI / 180;
+    const φ2 = lat2 * Math.PI / 180;
+    const Δφ = (lat2 - lat1) * Math.PI / 180;
+    const Δλ = (lon2 - lon1) * Math.PI / 180;
+
+    const a = Math.sin(Δφ / 2) ** 2 +
+              Math.cos(φ1) * Math.cos(φ2) *
+              Math.sin(Δλ / 2) ** 2;
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+  }
+
+  function updateLocation(position) {
+    const lat = position.coords.latitude;
+    const lon = position.coords.longitude;
+    userMarker.setLatLng([lat, lon]);
+    map.setView([lat, lon], 15);
+
+    const activeNodes = [];
+    let closestNode = null;
+    let minDistance = Infinity;
+
+    nodes.forEach(node => {
+      const distance = getDistance(lat, lon, node.lat, node.lon);
+      if (distance <= radius) activeNodes.push(node.name);
+      if (distance < minDistance) {
+        minDistance = distance;
+        closestNode = node;
       }
-    }
-  
-    function setGlobalVolume(val) {
-      if (!audioReady) return;
-      Object.values(audioElements).forEach(obj => obj.audio.volume = val);
-      defaultNoise.volume = val;
-    }
-  
-    if (navigator.geolocation) {
-      navigator.geolocation.watchPosition(updateLocation, console.error, { enableHighAccuracy: true });
+    });
+
+    if (audioReady && !isAudioPaused) adjustAudioVolumes(activeNodes);
+    updateStatusBox(lat, lon, closestNode, minDistance, activeNodes);
+  }
+
+  function adjustAudioVolumes(activeNodes) {
+    const numActive = activeNodes.length;
+    const volumePerTrack = numActive > 0 ? 1 / numActive : 0;
+
+    activeNodes.forEach(name => {
+      const { audio } = audioElements[name];
+      fadeIn(audio, volumePerTrack);
+    });
+
+    Object.keys(audioElements).forEach(name => {
+      if (!activeNodes.includes(name)) fadeOut(audioElements[name].audio);
+    });
+
+    if (numActive === 0) fadeIn(defaultNoise, 1);
+    else fadeOut(defaultNoise);
+  }
+
+  function fadeIn(audio, targetVolume) {
+    if (audio.paused) audio.play().catch(() => {});
+    let vol = audio.volume;
+    const step = 0.05;
+    const interval = setInterval(() => {
+      if (vol < targetVolume) {
+        vol = Math.min(vol + step, targetVolume);
+        audio.volume = vol;
+      } else {
+        clearInterval(interval);
+      }
+    }, 100);
+  }
+
+  function fadeOut(audio) {
+    let vol = audio.volume;
+    const step = 0.05;
+    const interval = setInterval(() => {
+      if (vol > 0) {
+        vol = Math.max(vol - step, 0);
+        audio.volume = vol;
+      } else {
+        audio.pause();
+        clearInterval(interval);
+      }
+    }, 100);
+  }
+
+  function updateStatusBox(lat, lon, closestNode, minDistance, activeNodes) {
+    document.getElementById("status-box").innerHTML = `
+      <strong>Latitude:</strong> ${lat.toFixed(6)}<br>
+      <strong>Longitude:</strong> ${lon.toFixed(6)}<br>
+      <strong>Closest Node:</strong> ${closestNode ? closestNode.name : 'None'}<br>
+      <strong>Active Tracks:</strong> ${activeNodes.length > 0 ? activeNodes.join(", ") : 'Default Noise'}
+    `;
+  }
+
+  function toggleGlobalAudio() {
+    if (!audioReady) return;
+
+    isAudioPaused = !isAudioPaused;
+    const btn = document.getElementById("audio-toggle-btn");
+    btn.textContent = isAudioPaused ? "Play" : "Pause";
+
+    if (isAudioPaused) {
+      Object.values(audioElements).forEach(obj => {
+        if (obj.audio.volume > 0) obj.audio.pause();
+      });
+      if (defaultNoise.volume > 0) defaultNoise.pause();
     } else {
-      alert("Geolocation is not supported by your browser.");
+      Object.values(audioElements).forEach(obj => {
+        if (obj.audio.volume > 0) obj.audio.play().catch(() => {});
+      });
+      if (defaultNoise.volume > 0) defaultNoise.play().catch(() => {});
     }
-  </script>
-  
-</body>
-</html>
+  }
+
+  function setGlobalVolume(val) {
+    if (!audioReady) return;
+    Object.values(audioElements).forEach(obj => obj.audio.volume = val);
+    defaultNoise.volume = val;
+  }
+
+  function handleGeoError(error) {
+    const box = document.getElementById("status-box");
+    switch (error.code) {
+      case error.PERMISSION_DENIED:
+        box.innerHTML = `
+          <strong>Location access denied.</strong><br>
+          Please enable location permissions in your browser settings.
+        `;
+        break;
+      case error.POSITION_UNAVAILABLE:
+        box.innerHTML = `
+          <strong>Location unavailable.</strong><br>
+          Please enable GPS or move to an area with better signal.
+        `;
+        break;
+      case error.TIMEOUT:
+        box.innerHTML = `
+          <strong>Location request timed out.</strong><br>
+          Try refreshing the page with GPS enabled.
+        `;
+        break;
+      default:
+        box.innerHTML = `<strong>Unknown error getting location.</strong>`;
+    }
+  }
+
+  // Try to get an initial quick location, then start watchPosition
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(updateLocation, handleGeoError, {
+      enableHighAccuracy: true,
+      timeout: 5000
+    });
+
+    navigator.geolocation.watchPosition(updateLocation, handleGeoError, {
+      enableHighAccuracy: true,
+      maximumAge: 0,
+      timeout: 10000
+    });
+
+    document.getElementById("status-box").innerHTML = "Searching for location...";
+  } else {
+    document.getElementById("status-box").innerHTML = `
+      <strong>Geolocation is not supported by your browser.</strong>
+    `;
+  }
+</script>
