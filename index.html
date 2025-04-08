@@ -153,9 +153,14 @@
       { lat: 41.310420, lon: -72.928195, name: "Berkeley College", audio: "berkeley.mp3" }
     ];
 
-    const map = L.map('map').setView([0, 0], 15);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '&copy; OpenStreetMap contributors'
+    // Initialize the map
+    var map = L.map('map').setView([0, 0], 15); 
+        
+    // Initialize OpenStreetMap style
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+        attribution: '&copy; OpenStreetMap &copy; CartoDB',
+        subdomains: 'abcd',
+        maxZoom: 20
     }).addTo(map);
 
     const userIcon = L.divIcon({ className: 'custom-marker', iconSize: [20, 20] });
