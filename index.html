@@ -54,36 +54,25 @@
       bottom: 10px;
       left: 10px;
       z-index: 1001;
-      background: white;
-      padding: 10px;
-      border-radius: 8px;
-      box-shadow: 0 0 10px rgba(0,0,0,0.2);
-      display: flex;
-      flex-direction: column;
-      align-items: flex-start;
-      gap: 8px;
     }
+
+    
     #global-audio-controls button {
-      background: #007bff;
+      background: #8fb2d8;
       color: white;
       border: none;
       border-radius: 50%;
-      width: 50px;
-      height: 50px;
+      width: 75px;
+      height: 75px;
       font-size: 1.4rem;
       cursor: pointer;
-      box-shadow: 0 0 8px rgba(0, 0, 0, 0.2);
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.25);
       transition: background 0.3s ease, transform 0.1s ease;
     }
 
     #global-audio-controls button:hover {
       background: #0056b3;
-      transform: scale(1.05);
-    }
-
-
-    #global-audio-controls input[type="range"] {
-      width: 100px;
+      transform: scale(1.1);
     }
 
     #audio-unlock-overlay {
@@ -140,13 +129,10 @@
   <div id="status-box">Searching for location...</div>
 
   <div id="global-audio-controls">
-    <button id="audio-toggle-btn" onclick="toggleGlobalAudio()">Play</button>
-    <label style="font-size: 0.9rem;">
-      Volume
-      <input type="range" min="0" max="1" step="0.01" value="1" onchange="setGlobalVolume(this.value)">
-    </label>
+    <button id="audio-toggle-btn" onclick="toggleGlobalAudio()">▶️</button>
   </div>
-
+  
+  
   <div id="audio-unlock-overlay">
     <div class="note-spinner">🎵</div>
     <p style="margin-bottom: 1rem; font-size: 1.2rem;">Tap to start audio experience</p>
