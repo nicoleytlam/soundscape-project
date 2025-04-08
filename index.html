@@ -237,6 +237,8 @@
       userMarker.setLatLng([lat, lon]);
       map.setView([lat, lon], 15);
 
+      window.lastKnownPosition = { lat, lon }; // Store latest coordinates
+
       const activeNodes = [];
       let closestNode = null;
       let minDistance = Infinity;
@@ -249,8 +251,6 @@
           closestNode = node;
         }
       });
-
-      window.lastActiveNodes = activeNodes;
 
       if (audioReady && !isAudioPaused) {
         adjustAudioVolumes(activeNodes);
@@ -324,16 +324,21 @@
       btn.textContent = isAudioPaused ? "🔇" : "▶️";
 
       if (isAudioPaused) {
-        // Smoothly fade everything out
         Object.values(audioElements).forEach(obj => fadeOut(obj.audio));
         fadeOut(defaultNoise);
       } else {
-        // Last known location will decide what to fade in
-        if (window.lastActiveNodes) {
-          adjustAudioVolumes(window.lastActiveNodes);
+        // Use last known position to recompute what should be playing
+        if (window.lastKnownPosition) {
+          updateLocation({
+            coords: {
+              latitude: window.lastKnownPosition.lat,
+              longitude: window.lastKnownPosition.lon
+            }
+          });
         }
       }
     }
+
 
 
 
