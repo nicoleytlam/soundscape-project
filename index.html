@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>GPS Location with Audio</title>
+  <title>Uncharted: Your Own Soundscape Experience</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
   <style>
     html, body {
@@ -267,31 +267,40 @@
         audio.play().catch(() => {});
       }
       let vol = audio.volume;
-      const step = 0.05;
-      const interval = setInterval(() => {
+      const step = 0.02;
+
+      function fade() {
+        vol = Math.min(vol + step, targetVolume);
+        audio.volume = vol;
+
         if (vol < targetVolume) {
-          vol = Math.min(vol + step, targetVolume);
-          audio.volume = vol;
-        } else {
-          clearInterval(interval);
+          requestAnimationFrame(fade);
         }
-      }, 100);
+      }
+
+      requestAnimationFrame(fade);
     }
+
 
 
     function fadeOut(audio) {
       let vol = audio.volume;
-      const step = 0.05;
-      const interval = setInterval(() => {
+      const step = 0.02;
+
+      function fade() {
+        vol = Math.max(vol - step, 0);
+        audio.volume = vol;
+
         if (vol > 0) {
-          vol = Math.max(vol - step, 0);
-          audio.volume = vol;
+          requestAnimationFrame(fade);
         } else {
           audio.pause();
-          clearInterval(interval);
         }
-      }, 100);
+      }
+
+      requestAnimationFrame(fade);
     }
+
 
     function updateStatusBox(lat, lon, closestNode, minDistance, activeNodes) {
           document.getElementById("status-box").innerHTML = `
