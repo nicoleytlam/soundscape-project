@@ -32,14 +32,12 @@ Experience the live demo here: [nicoleytlam.github.io/soundscape-project](https:
    cd soundscape-project
    ```
 
-3. Open `index.html` in your preferred web browser.
-
 ## Usage
 
 1. Ensure your device's location services are enabled.
 2. Open the web application in your mobile browser.
-3. As you move through different geographic areas, the application will play and blend musical excerpts associated with those regions. ([GitHub - soundscape-community/soundscape: An iOS application/service ...](https://github.com/soundscape-community/soundscape?utm_source=chatgpt.com))
-
+3. As you move through different geographic areas, the application will play and blend musical excerpts associated with those regions.
+   
 ## Project Structure
 
 - `index.html` - Main HTML file for the web application.
